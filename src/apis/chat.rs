@@ -77,6 +77,15 @@ pub struct ChatBody {
 	/// which can help OpenAI to monitor and detect abuse. Learn more.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub user: Option<String>,
+	/// Tool / function-calling definitions (OpenAI 1.x / DeepSeek shape).
+	/// Each entry is wrapped as `{ "type": "function", "function": { ... } }`.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub tools: Option<Vec<crate::Tool>>,
+	/// Controls which (if any) tool the model is called with. Values:
+	/// `"auto"`, `"none"`, `"required"`, or
+	/// `{ "type": "function", "function": { "name": "..." } }`.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub tool_choice: Option<serde_json::Value>,
 }
 
 pub trait ChatApi {
@@ -114,7 +123,9 @@ mod tests {
 			frequency_penalty: None,
 			logit_bias: None,
 			user: None,
-			messages: vec![Message { role: Role::User, content: "Hello!".to_string() }],
+			messages: vec![Message::new(Role::User, "Hello!")],
+			tools: None,
+			tool_choice: None,
 		};
 		let rs = openai.chat_completion_create(&body);
 		let choice = rs.unwrap().choices;
