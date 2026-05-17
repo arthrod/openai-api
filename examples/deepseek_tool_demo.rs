@@ -12,7 +12,7 @@
 //! Optional env:
 //!
 //!   DEEPSEEK_BASE_URL    default https://api.deepseek.com/v1/
-//!   DEEPSEEK_MODEL       default deepseek-v4-flash (per user request)
+//!   DEEPSEEK_MODEL       default deepseek-v4-pro (per user request)
 
 use openai_api_rust::{
     chat::{ChatApi, ChatBody},
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|_| "DEEPSEEK_API_KEY must be set")?;
     let base_url =
         env::var("DEEPSEEK_BASE_URL").unwrap_or_else(|_| "https://api.deepseek.com/v1/".to_string());
-    let model = env::var("DEEPSEEK_MODEL").unwrap_or_else(|_| "deepseek-v4-flash".to_string());
+    let model = env::var("DEEPSEEK_MODEL").unwrap_or_else(|_| "deepseek-v4-pro".to_string());
 
     let client = OpenAI::new(Auth::new(&api_key), &base_url);
 
