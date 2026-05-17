@@ -64,19 +64,33 @@ impl Requests for OpenAI {
 fn deal_response(response: Result<ureq::Response, ureq::Error>, sub_url: &str) -> ApiResult<Json> {
 	match response {
 		Ok(resp) => {
-			let json = resp.into_json::<Json>().unwrap();
+			// Read body as a string first so non-JSON / empty bodies (some
+			// OpenAI-compatible upstreams return them on edge cases) surface
+			// as a typed error instead of panicking via `.unwrap()`.
+			let body = resp
+				.into_string()
+				.map_err(|e| Error::ApiError(format!("could not read body: {e}")))?;
+			if body.trim().is_empty() {
+				return Ok(Json::Null);
+			}
+			let json: Json = serde_json::from_str(&body).map_err(|e| {
+				Error::ApiError(format!("upstream returned non-JSON body ({e}): {body}"))
+			})?;
 			debug!("<== ✔️\n\tDone api: {sub_url}, resp: {json}");
-			return Ok(json);
+			Ok(json)
 		},
 		Err(err) => match err {
 			ureq::Error::Status(status, response) => {
-				let error_msg = response.into_json::<Json>().unwrap();
-				error!("<== ❌\n\tError api: {sub_url}, status: {status}, error: {error_msg}");
-				return Err(Error::ApiError(format!("{error_msg}")));
+				// Same lenient handling on error responses.
+				let body = response
+					.into_string()
+					.unwrap_or_else(|_| String::from("<unreadable body>"));
+				error!("<== ❌\n\tError api: {sub_url}, status: {status}, error: {body}");
+				Err(Error::ApiError(format!("HTTP {status}: {body}")))
 			},
 			ureq::Error::Transport(e) => {
 				error!("<== ❌\n\tError api: {sub_url}, error: {:?}", e.to_string());
-				return Err(Error::RequestError(e.to_string()));
+				Err(Error::RequestError(e.to_string()))
 			},
 		},
 	}

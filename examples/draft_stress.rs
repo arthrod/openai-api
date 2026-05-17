@@ -100,7 +100,7 @@ fn csv_cell(v: &str) -> String {
 }
 
 const CSV_HEADER: &str =
-    "nanoid,date,timestamp,timestamp_completion,backend,model,agreement,ok,ttft_ms,total_ms,chars,sections,error\n";
+    "nanoid,date,timestamp,timestamp_completion,backend,model,agreement,ok,ttft_ms,total_ms,chars,sections,error,content\n";
 
 fn ensure_csv(path: &Path) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
@@ -112,6 +112,7 @@ fn ensure_csv(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn append_row(
     path: &Path,
     id: &str,
@@ -126,6 +127,7 @@ fn append_row(
     chars: usize,
     sections: usize,
     error: &str,
+    content: &str,
 ) -> std::io::Result<()> {
     let date = &started[..10]; // YYYY-MM-DD prefix
     let row = [
@@ -142,6 +144,7 @@ fn append_row(
         chars.to_string(),
         sections.to_string(),
         csv_cell(error),
+        csv_cell(content),
     ]
     .join(",");
     let mut f = OpenOptions::new().append(true).open(path)?;
@@ -278,6 +281,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     chars,
                     sections,
                     "",
+                    &text,
                 )?;
             }
             Err(e) => {
@@ -298,6 +302,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     0,
                     0,
                     &msg,
+                    "",
                 )?;
             }
         }

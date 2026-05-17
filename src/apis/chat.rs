@@ -97,8 +97,24 @@ impl ChatApi for OpenAI {
 	fn chat_completion_create(&self, chat_body: &ChatBody) -> ApiResult<Completion> {
 		let request_body = serde_json::to_value(chat_body).unwrap();
 		let res = self.post(CHAT_COMPLETION_CREATE, request_body)?;
-		let completion: Completion = serde_json::from_value(res.clone()).unwrap();
-		Ok(completion)
+		// Some OpenAI-compatible upstreams (e.g. certain Lightning AI model
+		// hostings) return an empty body — that parses as `Value::Null`
+		// here, which then panics in `serde_json::from_value(Null)`. Surface
+		// it as a proper ApiError instead of crashing the caller's thread.
+		if res.is_null() {
+			return Err(crate::Error::ApiError(
+				"upstream returned empty body — likely a streaming-default \
+				 endpoint that ignores stream:false, or an upstream error \
+				 page without a JSON body"
+					.to_string(),
+			));
+		}
+		serde_json::from_value::<Completion>(res.clone()).map_err(|e| {
+			crate::Error::ApiError(format!(
+				"upstream returned non-OpenAI-shaped JSON ({e}): {}",
+				serde_json::to_string(&res).unwrap_or_default()
+			))
+		})
 	}
 }
 
